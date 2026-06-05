@@ -1,17 +1,22 @@
+import InsightCard from "@/components/dashboard/InsightCard";
+import { insights } from "@/data/mockInsights";
+
 export default function AIInsights() {
   return (
-    <div className="border rounded-2xl p-6 mt-8">
-        <h2 className="text-2xl font-semibold mb-4">
-            AI Insights
-        </h2>
+    <section className="border rounded-2xl p-6 mt-8">
+      <h2 className="text-2xl font-semibold mb-6">
+        AI Insights
+      </h2>
 
-        <p>
-            Response completion rate has improved by 12% compared to last month.
-        </p>
-
-        <p className="mt-3">
-            Urban regions shoe higher participation than rural regions.
-        </p>
-    </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {insights.map((insight) => (
+          <InsightCard
+            key={insight.title}
+            title={insight.title}
+            description={insight.description}
+          />
+        ))}
+      </div>
+    </section>
   );
 }
