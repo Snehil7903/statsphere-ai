@@ -1,7 +1,8 @@
-import AIInsights from "@/components/dashboard/AIInsights";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import MetricCard from "@/components/dashboard/MetricCard";
 import SurveyTrendChart from "@/components/dashboard/SurveyTrendChart";
+import AIInsights from "@/components/dashboard/AIInsights";
+
 import { metrics } from "@/data/mockMetrics";
 
 export default function DashboardPage() {
@@ -10,6 +11,7 @@ export default function DashboardPage() {
       <DashboardHeader />
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+
         {metrics.map((metric) => (
           <MetricCard
             key={metric.title}
@@ -18,6 +20,7 @@ export default function DashboardPage() {
             change={metric.change}
           />
         ))}
+
       </div>
 
       <SurveyTrendChart />
