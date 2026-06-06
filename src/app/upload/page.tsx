@@ -1,86 +1,232 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import Papa from "papaparse";
-import RecommendationSection
-  from "@/components/upload/RecommendationSection";
+import gsap from "gsap";
+import { useGSAP } from "@gsap/react";
+import { UploadCloud, FileSpreadsheet, Sparkles, Loader2 } from "lucide-react";
 
+import RecommendationSection from "@/components/upload/RecommendationSection";
 import { profileDataset } from "@/lib/datasetProfiler";
 import { DatasetProfile } from "@/types/dataset";
-
 import ProfileSection from "@/components/upload/ProfileSection";
 import ColumnAnalysis from "@/components/upload/ColumnAnalysis";
 import DatasetTable from "@/components/upload/DatasetTable";
-
-import AutoChart
-  from "@/components/upload/AutoChart";
+import AutoChart from "@/components/upload/AutoChart";
 
 export default function UploadPage() {
   const [data, setData] = useState<Record<string, any>[]>([]);
-  const [profile, setProfile] =
-    useState<DatasetProfile | null>(null);
+  const [profile, setProfile] = useState<DatasetProfile | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isParsing, setIsParsing] = useState(false);
 
-  const handleFileUpload = (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = event.target.files?.[0];
+  const containerRef = useRef<HTMLDivElement>(null);
+  const resultsRef = useRef<HTMLDivElement>(null);
+  const dropzoneRef = useRef<HTMLDivElement>(null); // Dedicated Dropzone Ref
 
-    if (!file) return;
+  // Clean initial entrance animation for text typography layout
+  useGSAP(() => {
+    gsap.from(".hero-text", {
+      y: 30,
+      opacity: 0,
+      duration: 1,
+      stagger: 0.12,
+      ease: "power3.out",
+    });
+  }, { scope: containerRef });
+
+  // CRITICAL FIX: Explicit fromTo handling for the dropzone on page mount or reset
+  useGSAP(() => {
+    if (!profile && dropzoneRef.current) {
+      gsap.fromTo(dropzoneRef.current,
+        { y: 30, opacity: 0 },
+        { y: 0, opacity: 1, duration: 1, ease: "power3.out", delay: 0.2 }
+      );
+    }
+  }, { dependencies: [profile], scope: containerRef });
+
+  // Dashboard reveal staggering when dataset profile matches arrive
+  useGSAP(() => {
+    if (profile && resultsRef.current) {
+      gsap.fromTo(".dashboard-card", 
+        { y: 40, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.8, stagger: 0.08, ease: "power3.out" }
+      );
+    }
+  }, { dependencies: [profile], scope: resultsRef });
+
+  const processFile = (file: File) => {
+    if (!file || !file.name.endsWith(".csv")) return;
+    setIsParsing(true);
 
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
-
+      dynamicTyping: true,
       complete: (results) => {
-        const parsed =
-          results.data as Record<string, any>[];
-
-        setData(parsed);
-        setProfile(profileDataset(parsed));
+        const parsed = results.data as Record<string, any>[];
+        setTimeout(() => {
+          setData(parsed);
+          setProfile(profileDataset(parsed));
+          setIsParsing(false);
+        }, 500);
       },
     });
   };
 
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) processFile(file);
+  }, []);
+
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) processFile(file);
+  };
+
   return (
-    <div>
+    <div 
+      ref={containerRef} 
+      className="min-h-screen bg-[#050505] text-white selection:bg-white selection:text-black overflow-x-hidden relative"
+    >
+      {/* Ambient Background Glow */}
+      <div className="absolute top-[-20%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-indigo-500/10 blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-20%] right-[-10%] w-[50vw] h-[50vw] rounded-full bg-fuchsia-500/10 blur-[120px] pointer-events-none" />
 
-      <h1 className="text-4xl font-bold mb-8">
-        Upload Dataset
-      </h1>
+      <main className="relative z-10 max-w-7xl mx-auto px-6 py-20 md:py-32">
+        
+        {/* Hero Section */}
+        <div className="text-center mb-16 max-w-3xl mx-auto">
+          <div className="hero-text inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-sm font-medium text-zinc-300 mb-6 backdrop-blur-md">
+            <Sparkles className="w-4 h-4 text-indigo-400" />
+            Intelligent Data Profiling
+          </div>
+          <h1 className="hero-text text-5xl md:text-7xl font-bold tracking-tighter mb-6 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60">
+            Upload Dataset
+          </h1>
+          <p className="hero-text text-lg md:text-xl text-zinc-400 font-light">
+            Drop your CSV below to instantly generate structural insights, statistical profiles, and automated visualizations.
+          </p>
+        </div>
 
-      <input
-        type="file"
-        accept=".csv"
-        onChange={handleFileUpload}
-      />
+        {/* Upload Dropzone Container */}
+        {!profile && (
+          <div 
+            ref={dropzoneRef} // Connected target reference hook explicitly
+            className={`transition-all duration-500 ease-out max-w-2xl mx-auto style={{ opacity: 0 }}`} // Starts hidden natively to prevent flash of content
+          >
+            <label
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              className={`flex flex-col items-center justify-center w-full h-80 rounded-[2rem] border-2 border-dashed cursor-pointer relative overflow-hidden backdrop-blur-md group shadow-2xl transition-all duration-300
+                ${isDragging 
+                  ? "border-indigo-500 bg-indigo-500/15 ring-4 ring-indigo-500/10" 
+                  : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/20"
+                }
+              `}
+            >
+              <input 
+                type="file" 
+                accept=".csv" 
+                className="hidden" 
+                onChange={handleFileInput}
+                disabled={isParsing} 
+              />
+              
+              <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center px-6 relative z-10">
+                {isParsing ? (
+                  <Loader2 className="w-16 h-16 text-indigo-400 animate-spin mb-6" />
+                ) : (
+                  <div className="p-5 rounded-full bg-white/5 border border-white/10 group-hover:scale-110 group-hover:bg-indigo-500/10 group-hover:border-indigo-500/20 transition-all duration-300 mb-6 shadow-xl">
+                    <UploadCloud className="w-10 h-10 text-zinc-300 group-hover:text-indigo-400 transition-colors" />
+                  </div>
+                )}
+                
+                <h3 className="text-2xl font-semibold mb-2 text-white">
+                  {isParsing ? "Analyzing Data Structure..." : "Click or drag your CSV here"}
+                </h3>
+                <p className="text-zinc-400 text-sm max-w-xs font-light">
+                  Supports any standard comma-separated values format.
+                </p>
+              </div>
 
-      {profile && (
-        <>
-          <ProfileSection profile={profile} />
+              <div className="absolute inset-0 bg-gradient-to-b from-indigo-500/0 to-indigo-500/5 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            </label>
+          </div>
+        )}
 
-          <ColumnAnalysis profile={profile} />
+        {/* Dynamic Results Dashboard */}
+        {profile && (
+          <div ref={resultsRef} className="space-y-12">
+            {/* Header Actions */}
+            <div className="dashboard-card flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-md">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-indigo-500/20 rounded-xl">
+                  <FileSpreadsheet className="w-6 h-6 text-indigo-400" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-medium text-white">Dataset Active</h2>
+                  <p className="text-zinc-400 text-sm">{data.length.toLocaleString()} rows processed</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => {
+                  setProfile(null);
+                  setData([]);
+                }}
+                className="px-6 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-colors border border-white/5"
+              >
+                Upload New
+              </button>
+            </div>
 
-          <RecommendationSection
-            profile={profile}
-          />
+            {/* Top Level Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div className="dashboard-card lg:col-span-1">
+                <ProfileSection profile={profile} />
+              </div>
+              <div className="dashboard-card lg:col-span-2">
+                <RecommendationSection profile={profile} />
+              </div>
+            </div>
 
-          {profile.numericColumns.length > 0 && (
+            {/* Analysis Grid */}
+            <div className="dashboard-card w-full">
+              <ColumnAnalysis profile={profile} />
+            </div>
 
-            <AutoChart
-              data={data}
-              column={
-                profile.numericColumns[0]
-              }
-            />
+            {/* Auto Chart Workspace Container */}
+            {profile.numericColumns.length > 0 && (
+              <div className="dashboard-card w-full">
+                <AutoChart data={data} column={profile.numericColumns[0]} />
+              </div>
+            )}
 
-          )}
-        </>
-      )}
-
-      {data.length > 0 && (
-        <DatasetTable data={data} />
-      )}
-
+            {/* Raw Data Table */}
+            {data.length > 0 && (
+              <div className="dashboard-card w-full overflow-hidden rounded-3xl border border-white/10 bg-white/5 backdrop-blur-sm">
+                <div className="p-6 border-b border-white/10">
+                  <h3 className="text-xl font-semibold text-white">Raw Data Explorer</h3>
+                </div>
+                <DatasetTable data={data} />
+              </div>
+            )}
+          </div>
+        )}
+      </main>
     </div>
   );
 }
