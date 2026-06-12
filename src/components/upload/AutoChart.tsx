@@ -58,7 +58,7 @@ export default function AutoChart({ data, column }: AutoChartProps) {
       const min = Math.min(...values);
       const max = Math.max(...values);
       const range = max - min;
-      
+
       const binCount = Math.min(Math.max(Math.ceil(Math.log2(values.length) + 1), 7), 12);
       const binWidth = Math.ceil(range / binCount) || 1;
 
@@ -113,26 +113,36 @@ export default function AutoChart({ data, column }: AutoChartProps) {
         xValue: xVal,
         yValue: Number((metrics.sum / metrics.count).toFixed(3)), // Average value rounded elegantly
       }))
-      // CRITICAL FIX: Forces horizontal parameters to sort cleanly in ascending numerical order
+      // Forces horizontal parameters to sort cleanly in ascending numerical order
       .sort((a, b) => a.xValue - b.xValue)
-      .slice(0, 100); // Caps layout rendering pipeline bounds for optimal interface frame response
+      .slice(0, 100);
   }, [data, xAxisKey, yAxisKey, isUnivariate]);
 
   // Compute the exact chart value mapping target key dynamically
   const activeMetricKey = isUnivariate ? "Frequency Count" : "yValue";
 
-  // Premium Custom Tooltip
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  // PREMIUM CUSTOM TOOLTIP: Decoupled from generic labels to prevent "undefined" bugs completely
+  const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
+      const itemData = payload[0].payload;
+      
+      const displayLabel = isUnivariate 
+        ? `${xAxisKey}: ${itemData.displayLabel}`
+        : `${xAxisKey}: ${itemData.xValue}`;
+
+      const finalValue = isUnivariate 
+        ? itemData["Frequency Count"] 
+        : itemData.yValue;
+
       return (
-        <div className="bg-zinc-950/95 border border-white/10 backdrop-blur-xl px-4 py-3 rounded-xl shadow-2xl z-50">
+        <div className="bg-zinc-950/95 border border-white/10 backdrop-blur-xl px-4 py-3 rounded-xl shadow-2xl z-50 min-w-[140px]">
           <p className="text-[11px] uppercase tracking-wider text-zinc-500 font-semibold mb-1">
-            {isUnivariate ? `Interval Range: ${label}` : `${xAxisKey}: ${label}`}
+            {displayLabel}
           </p>
           <p className="text-sm font-medium text-zinc-200">
             {isUnivariate ? "Total Rows: " : `${yAxisKey}: `}
             <span className="text-white font-bold text-indigo-400">
-              {payload[0].value.toLocaleString()}
+              {finalValue?.toLocaleString()}
             </span>
           </p>
         </div>
@@ -143,10 +153,10 @@ export default function AutoChart({ data, column }: AutoChartProps) {
 
   return (
     <div className="w-full bg-white/[0.01] border border-white/5 rounded-3xl p-8 backdrop-blur-xl shadow-2xl relative overflow-hidden group">
-      
+
       {/* Dynamic Header Controls */}
       <div className="flex flex-col gap-6 mb-10 relative z-10">
-        
+
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
             <div className="flex items-center gap-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1">
@@ -154,7 +164,7 @@ export default function AutoChart({ data, column }: AutoChartProps) {
               Custom Analytics Studio
             </div>
             <h3 className="text-2xl font-bold tracking-tight text-white capitalize">
-              {isUnivariate 
+              {isUnivariate
                 ? `${xAxisKey.replace(/([A-Z])/g, " $1").trim()} Distribution`
                 : `${xAxisKey.replace(/([A-Z])/g, " $1")} vs ${yAxisKey.replace(/([A-Z])/g, " $1")}`
               }
@@ -186,7 +196,7 @@ export default function AutoChart({ data, column }: AutoChartProps) {
           </div>
         </div>
 
-        {/* AXIS AXLE CONTROLLERS: Custom Parameter Dropdown Pickers */}
+        {/* AXIS CONTROLLERS: Custom Parameter Dropdown Pickers */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-2xl bg-white/[0.02] border border-white/5">
           <div className="flex flex-col gap-1.5">
             <label className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">X-Axis Parameter</label>
@@ -293,10 +303,15 @@ export default function AutoChart({ data, column }: AutoChartProps) {
                 outerRadius={110}
                 paddingAngle={4}
                 dataKey={activeMetricKey}
-                nameKey="displayLabel"
+                nameKey={isUnivariate ? "displayLabel" : "xValue"}
               >
                 {processedData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="rgba(5,5,5,0.5)" strokeWidth={2} />
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={COLORS[index % COLORS.length]}
+                    stroke="rgba(5,5,5,0.5)"
+                    strokeWidth={2}
+                  />
                 ))}
               </Pie>
               <Tooltip content={<CustomTooltip />} />

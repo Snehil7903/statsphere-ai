@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import Papa from "papaparse";
+import * as XLSX from "xlsx";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { UploadCloud, FileSpreadsheet, Sparkles, Loader2 } from "lucide-react";
@@ -22,7 +23,7 @@ export default function UploadPage() {
 
   const containerRef = useRef<HTMLDivElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
-  const dropzoneRef = useRef<HTMLDivElement>(null); // Dedicated Dropzone Ref
+  const dropzoneRef = useRef<HTMLDivElement>(null);
 
   // Clean initial entrance animation for text typography layout
   useGSAP(() => {
@@ -35,7 +36,7 @@ export default function UploadPage() {
     });
   }, { scope: containerRef });
 
-  // CRITICAL FIX: Explicit fromTo handling for the dropzone on page mount or reset
+  // Explicit fromTo handling for the dropzone on page mount or reset
   useGSAP(() => {
     if (!profile && dropzoneRef.current) {
       gsap.fromTo(dropzoneRef.current,
@@ -55,23 +56,57 @@ export default function UploadPage() {
     }
   }, { dependencies: [profile], scope: resultsRef });
 
+  // Core Orchestrator: Dispatches parsing behavior based on true file extensions
   const processFile = (file: File) => {
-    if (!file || !file.name.endsWith(".csv")) return;
+    if (!file) return;
+    
+    const extension = file.name.split(".").pop()?.toLowerCase();
+    if (extension !== "csv" && extension !== "xlsx" && extension !== "xls") {
+      alert("Invalid format profile. Please drop a valid CSV or Excel workbook.");
+      return;
+    }
+
     setIsParsing(true);
 
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      dynamicTyping: true,
-      complete: (results) => {
-        const parsed = results.data as Record<string, any>[];
-        setTimeout(() => {
-          setData(parsed);
-          setProfile(profileDataset(parsed));
-          setIsParsing(false);
-        }, 500);
-      },
-    });
+    // Flow Setup A: Handle Standard Comma Separated Matrices via PapaParse
+    if (extension === "csv") {
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        dynamicTyping: true,
+        complete: (results) => {
+          const parsed = results.data as Record<string, any>[];
+          finalizeDatasetProcessing(parsed);
+        },
+      });
+    } 
+    // Flow Setup B: Parse Binary Excel Workbooks via SheetJS Layout Vectors
+    else {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const arrayBuffer = e.target?.result;
+        if (!arrayBuffer) return;
+
+        const workbook = XLSX.read(arrayBuffer, { type: "array" });
+        // Target the very first worksheet tab index default frame automatically
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        
+        // Parse array metrics into readable JSON object tracks directly
+        const parsed = XLSX.utils.sheet_to_json(worksheet, { defval: null }) as Record<string, any>[];
+        finalizeDatasetProcessing(parsed);
+      };
+      reader.readAsArrayBuffer(file);
+    }
+  };
+
+  // Shared completion pipeline runner to handle state alignment cleanly
+  const finalizeDatasetProcessing = (parsedData: Record<string, any>[]) => {
+    setTimeout(() => {
+      setData(parsedData);
+      setProfile(profileDataset(parsedData));
+      setIsParsing(false);
+    }, 500);
   };
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -117,15 +152,15 @@ export default function UploadPage() {
             Upload Dataset
           </h1>
           <p className="hero-text text-lg md:text-xl text-zinc-400 font-light">
-            Drop your CSV below to instantly generate structural insights, statistical profiles, and automated visualizations.
+            Drop your CSV or Excel workbook below to instantly generate structural insights, statistical profiles, and automated visualizations.
           </p>
         </div>
 
         {/* Upload Dropzone Container */}
         {!profile && (
           <div 
-            ref={dropzoneRef} // Connected target reference hook explicitly
-            className={`transition-all duration-500 ease-out max-w-2xl mx-auto style={{ opacity: 0 }}`} // Starts hidden natively to prevent flash of content
+            ref={dropzoneRef}
+            className="transition-all duration-500 ease-out max-w-2xl mx-auto"
           >
             <label
               onDragOver={handleDragOver}
@@ -140,7 +175,7 @@ export default function UploadPage() {
             >
               <input 
                 type="file" 
-                accept=".csv" 
+                accept=".csv, .xlsx, .xls" // Expanded visual click filtering parameters
                 className="hidden" 
                 onChange={handleFileInput}
                 disabled={isParsing} 
@@ -156,10 +191,10 @@ export default function UploadPage() {
                 )}
                 
                 <h3 className="text-2xl font-semibold mb-2 text-white">
-                  {isParsing ? "Analyzing Data Structure..." : "Click or drag your CSV here"}
+                  {isParsing ? "Analyzing Data Structure..." : "Click or drag your dataset here"}
                 </h3>
                 <p className="text-zinc-400 text-sm max-w-xs font-light">
-                  Supports any standard comma-separated values format.
+                  Supports unified comma-separated matrices or modern Excel sheets (.csv, .xlsx, .xls)
                 </p>
               </div>
 
