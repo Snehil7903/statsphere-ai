@@ -14,6 +14,8 @@ import ProfileSection from "@/components/upload/ProfileSection";
 import ColumnAnalysis from "@/components/upload/ColumnAnalysis";
 import DatasetTable from "@/components/upload/DatasetTable";
 import AutoChart from "@/components/upload/AutoChart";
+import StatisticsSection
+  from "@/components/upload/StatisticsSection";
 
 export default function UploadPage() {
   const [data, setData] = useState<Record<string, any>[]>([]);
@@ -49,7 +51,7 @@ export default function UploadPage() {
   // Dashboard reveal staggering when dataset profile matches arrive
   useGSAP(() => {
     if (profile && resultsRef.current) {
-      gsap.fromTo(".dashboard-card", 
+      gsap.fromTo(".dashboard-card",
         { y: 40, opacity: 0 },
         { y: 0, opacity: 1, duration: 0.8, stagger: 0.08, ease: "power3.out" }
       );
@@ -59,7 +61,7 @@ export default function UploadPage() {
   // Core Orchestrator: Dispatches parsing behavior based on true file extensions
   const processFile = (file: File) => {
     if (!file) return;
-    
+
     const extension = file.name.split(".").pop()?.toLowerCase();
     if (extension !== "csv" && extension !== "xlsx" && extension !== "xls") {
       alert("Invalid format profile. Please drop a valid CSV or Excel workbook.");
@@ -79,7 +81,7 @@ export default function UploadPage() {
           finalizeDatasetProcessing(parsed);
         },
       });
-    } 
+    }
     // Flow Setup B: Parse Binary Excel Workbooks via SheetJS Layout Vectors
     else {
       const reader = new FileReader();
@@ -91,7 +93,7 @@ export default function UploadPage() {
         // Target the very first worksheet tab index default frame automatically
         const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
-        
+
         // Parse array metrics into readable JSON object tracks directly
         const parsed = XLSX.utils.sheet_to_json(worksheet, { defval: null }) as Record<string, any>[];
         finalizeDatasetProcessing(parsed);
@@ -132,8 +134,8 @@ export default function UploadPage() {
   };
 
   return (
-    <div 
-      ref={containerRef} 
+    <div
+      ref={containerRef}
       className="min-h-screen bg-[#050505] text-white selection:bg-white selection:text-black overflow-x-hidden relative"
     >
       {/* Ambient Background Glow */}
@@ -141,7 +143,7 @@ export default function UploadPage() {
       <div className="absolute bottom-[-20%] right-[-10%] w-[50vw] h-[50vw] rounded-full bg-fuchsia-500/10 blur-[120px] pointer-events-none" />
 
       <main className="relative z-10 max-w-7xl mx-auto px-6 py-20 md:py-32">
-        
+
         {/* Hero Section */}
         <div className="text-center mb-16 max-w-3xl mx-auto">
           <div className="hero-text inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-sm font-medium text-zinc-300 mb-6 backdrop-blur-md">
@@ -158,7 +160,7 @@ export default function UploadPage() {
 
         {/* Upload Dropzone Container */}
         {!profile && (
-          <div 
+          <div
             ref={dropzoneRef}
             className="transition-all duration-500 ease-out max-w-2xl mx-auto"
           >
@@ -167,20 +169,20 @@ export default function UploadPage() {
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
               className={`flex flex-col items-center justify-center w-full h-80 rounded-[2rem] border-2 border-dashed cursor-pointer relative overflow-hidden backdrop-blur-md group shadow-2xl transition-all duration-300
-                ${isDragging 
-                  ? "border-indigo-500 bg-indigo-500/15 ring-4 ring-indigo-500/10" 
+                ${isDragging
+                  ? "border-indigo-500 bg-indigo-500/15 ring-4 ring-indigo-500/10"
                   : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/20"
                 }
               `}
             >
-              <input 
-                type="file" 
+              <input
+                type="file"
                 accept=".csv, .xlsx, .xls" // Expanded visual click filtering parameters
-                className="hidden" 
+                className="hidden"
                 onChange={handleFileInput}
-                disabled={isParsing} 
+                disabled={isParsing}
               />
-              
+
               <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center px-6 relative z-10">
                 {isParsing ? (
                   <Loader2 className="w-16 h-16 text-indigo-400 animate-spin mb-6" />
@@ -189,7 +191,7 @@ export default function UploadPage() {
                     <UploadCloud className="w-10 h-10 text-zinc-300 group-hover:text-indigo-400 transition-colors" />
                   </div>
                 )}
-                
+
                 <h3 className="text-2xl font-semibold mb-2 text-white">
                   {isParsing ? "Analyzing Data Structure..." : "Click or drag your dataset here"}
                 </h3>
@@ -217,7 +219,7 @@ export default function UploadPage() {
                   <p className="text-zinc-400 text-sm">{data.length.toLocaleString()} rows processed</p>
                 </div>
               </div>
-              <button 
+              <button
                 onClick={() => {
                   setProfile(null);
                   setData([]);
@@ -249,6 +251,13 @@ export default function UploadPage() {
                 <AutoChart data={data} column={profile.numericColumns[0]} />
               </div>
             )}
+
+            <StatisticsSection
+              data={data}
+              numericColumns={
+                profile.numericColumns
+              }
+            />
 
             {/* Raw Data Table */}
             {data.length > 0 && (
