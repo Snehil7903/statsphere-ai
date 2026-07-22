@@ -16,13 +16,26 @@ import DatasetTable from "@/components/upload/DatasetTable";
 import AutoChart from "@/components/upload/AutoChart";
 import StatisticsSection
   from "@/components/upload/StatisticsSection";
+import { QualityReport } from "@/types/quality";
+import QualitySection
+from "@/components/upload/QualitySection";
+
+import {
+  generateQualityReport,
+}
+from "@/lib/dataQualityEngine";
+
 
 export default function UploadPage() {
   const [data, setData] = useState<Record<string, any>[]>([]);
   const [profile, setProfile] = useState<DatasetProfile | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
-
+const [qualityReport,
+setQualityReport] =
+useState<QualityReport | null>(
+  null
+);
   const containerRef = useRef<HTMLDivElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
   const dropzoneRef = useRef<HTMLDivElement>(null);
