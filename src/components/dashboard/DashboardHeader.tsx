@@ -1,9 +1,16 @@
 "use client";
 
-import { useMemo } from "react";
-import { Calendar, RefreshCw, Sparkles, Download } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Calendar, RefreshCw, Sparkles, Download, Check } from "lucide-react";
 
-export default function DashboardHeader() {
+type DashboardHeaderProps = {
+  data?: Record<string, any>[]; // Optional dataset passed down to export
+  onExport?: () => void;        // Optional custom callback override
+};
+
+export default function DashboardHeader({ data = [], onExport }: DashboardHeaderProps) {
+  const [exported, setExported] = useState(false);
+
   // Dynamically calculate the active calendar date layout for a premium feel
   const formattedDate = useMemo(() => {
     return new Date().toLocaleDateString("en-US", {
@@ -12,6 +19,39 @@ export default function DashboardHeader() {
       year: "numeric",
     });
   }, []);
+
+  // Built-in CSV Exporter logic if custom handler is not provided
+  const handleExport = () => {
+    if (onExport) {
+      onExport();
+      return;
+    }
+
+    // Default fallback: Generates CSV from provided data or placeholder summary
+    const exportDataset = data.length > 0 ? data : [
+      { Metric: "Total Surveys", Value: 12450 },
+      { Metric: "Responses", Value: 11230 },
+      { Metric: "Pending", Value: 1220 },
+      { Metric: "Completion Rate", Value: "90%" },
+    ];
+
+    const headers = Object.keys(exportDataset[0]).join(",");
+    const rows = exportDataset.map(row => Object.values(row).map(val => `"${val}"`).join(","));
+    const csvContent = [headers, ...rows].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `StatSphere_Summary_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // Trigger visual feedback state
+    setExported(true);
+    setTimeout(() => setExported(false), 2500);
+  };
 
   return (
     <div className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-6 pb-6 border-b border-white/5 relative z-10">
@@ -33,10 +73,26 @@ export default function DashboardHeader() {
       {/* Interactive Toolbar Actions & Meta Status */}
       <div className="flex flex-wrap items-center gap-4 self-start sm:self-center">
         
-        {/* Secondary Download Action Hook */}
-        <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 text-xs font-medium text-zinc-300 hover:text-white transition-all backdrop-blur-md active:scale-95 shadow-lg">
-          <Download className="w-3.5 h-3.5" />
-          Export Data
+        {/* Working Export Data Action Button */}
+        <button 
+          onClick={handleExport}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-xs font-medium transition-all backdrop-blur-md active:scale-95 shadow-lg cursor-pointer ${
+            exported 
+              ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" 
+              : "bg-white/5 border-white/10 hover:border-white/20 text-zinc-300 hover:text-white"
+          }`}
+        >
+          {exported ? (
+            <>
+              <Check className="w-3.5 h-3.5 text-emerald-400" />
+              Exported CSV
+            </>
+          ) : (
+            <>
+              <Download className="w-3.5 h-3.5" />
+              Export Data
+            </>
+          )}
         </button>
 
         {/* Vertical Separator Line */}

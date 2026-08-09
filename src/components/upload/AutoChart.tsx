@@ -22,6 +22,15 @@ import {
 } from "recharts";
 import { BarChart2, AreaChart as AreaIcon, TrendingUp, ScatterChart as ScatterIcon, PieChart as PieIcon, SlidersHorizontal } from "lucide-react";
 
+type ChartDatum = {
+  displayLabel: string;
+  minBound?: number;
+  maxBound?: number;
+  "Frequency Count"?: number;
+  xValue?: number;
+  yValue?: number;
+};
+
 type AutoChartProps = {
   data: Record<string, any>[];
   column: string; // Used as the initial fallback default dimension
@@ -44,7 +53,7 @@ export default function AutoChart({ data, column }: AutoChartProps) {
   const isUnivariate = xAxisKey === yAxisKey;
 
   // 1. Process dataset based on mode selection with robust increasing numerical sorting
-  const processedData = useMemo(() => {
+  const processedData = useMemo<ChartDatum[]>(() => {
     if (data.length === 0) return [];
 
     // Mode A: Single parameter distribution mapping (Histogram/Distribution logic)

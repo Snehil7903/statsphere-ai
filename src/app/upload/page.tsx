@@ -17,8 +17,7 @@ import AutoChart from "@/components/upload/AutoChart";
 import StatisticsSection
   from "@/components/upload/StatisticsSection";
 import { QualityReport } from "@/types/quality";
-import QualitySection
-from "@/components/upload/QualitySection";
+
 
 import {
   generateQualityReport,
